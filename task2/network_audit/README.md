@@ -46,5 +46,5 @@ The `uploads/` folder contains the 5 sample configs:
 - R4_Cisco.cfg — Cisco, BGP
 - R5_Huawei.cfg — Huawei
 
-![Project overview](images/1.peg)
+![Project overview](images/1.png)
 
