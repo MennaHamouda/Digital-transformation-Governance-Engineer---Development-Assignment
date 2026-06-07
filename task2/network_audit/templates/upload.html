@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Network Audit — Upload</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: #0f172a; color: #e2e8f0; min-height: 100vh; }
+
+    nav {
+      background: #1e293b;
+      border-bottom: 1px solid #334155;
+      padding: 0 2rem;
+      display: flex;
+      align-items: center;
+      gap: 2rem;
+      height: 56px;
+    }
+    nav .brand { font-size: 1.1rem; font-weight: 700; color: #38bdf8; letter-spacing: .5px; }
+    nav a { color: #94a3b8; text-decoration: none; font-size: .9rem; padding: 4px 0; border-bottom: 2px solid transparent; transition: .2s; }
+    nav a:hover, nav a.active { color: #e2e8f0; border-color: #38bdf8; }
+
+    .container { max-width: 900px; margin: 2.5rem auto; padding: 0 1.5rem; }
+    h1 { font-size: 1.6rem; font-weight: 700; margin-bottom: .4rem; }
+    .subtitle { color: #94a3b8; font-size: .95rem; margin-bottom: 2rem; }
+
+    .card {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      padding: 2rem;
+      margin-bottom: 2rem;
+    }
+    .card h2 { font-size: 1.1rem; font-weight: 600; margin-bottom: 1.2rem; color: #38bdf8; }
+
+    .drop-zone {
+      border: 2px dashed #334155;
+      border-radius: 10px;
+      padding: 3rem 2rem;
+      text-align: center;
+      cursor: pointer;
+      transition: .2s;
+      background: #0f172a;
+    }
+    .drop-zone:hover { border-color: #38bdf8; background: #172033; }
+    .drop-zone svg { width: 48px; height: 48px; color: #38bdf8; margin-bottom: 1rem; }
+    .drop-zone p { color: #94a3b8; font-size: .9rem; margin-top: .5rem; }
+    .drop-zone strong { color: #e2e8f0; }
+    #file-input { display: none; }
+    #file-list { margin-top: 1rem; font-size: .85rem; color: #94a3b8; }
+    #file-list span { display: inline-block; background: #0f172a; border: 1px solid #334155; border-radius: 6px; padding: 4px 10px; margin: 3px; color: #e2e8f0; }
+
+    .btn {
+      display: inline-flex; align-items: center; gap: .5rem;
+      padding: .65rem 1.4rem; border-radius: 8px; font-size: .9rem; font-weight: 600;
+      cursor: pointer; border: none; transition: .2s; text-decoration: none;
+    }
+    .btn-primary { background: #0ea5e9; color: #fff; }
+    .btn-primary:hover { background: #0284c7; }
+    .btn-secondary { background: #1e293b; color: #94a3b8; border: 1px solid #334155; }
+    .btn-secondary:hover { color: #e2e8f0; border-color: #94a3b8; }
+
+    .alert { padding: .9rem 1.2rem; border-radius: 8px; margin-bottom: 1.5rem; font-size: .9rem; }
+    .alert-success { background: #052e16; border: 1px solid #166534; color: #86efac; }
+    .alert-error   { background: #2d0a0a; border: 1px solid #991b1b; color: #fca5a5; }
+
+    table { width: 100%; border-collapse: collapse; font-size: .875rem; }
+    th { text-align: left; padding: .65rem 1rem; background: #0f172a; color: #94a3b8; font-weight: 600; font-size: .8rem; text-transform: uppercase; letter-spacing: .5px; border-bottom: 1px solid #334155; }
+    td { padding: .65rem 1rem; border-bottom: 1px solid #1e293b; }
+    tr:hover td { background: #0f172a55; }
+
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 99px; font-size: .75rem; font-weight: 600; }
+    .badge-cisco   { background: #1c3a5e; color: #93c5fd; }
+    .badge-huawei  { background: #1c2a1c; color: #86efac; }
+    .badge-juniper { background: #2d1a00; color: #fcd34d; }
+  </style>
+</head>
+<body>
+
+<nav>
+  <span class="brand">🛡 NetAudit</span>
+  <a href="/upload" class="active">Upload</a>
+  <a href="/dashboard">Dashboard</a>
+</nav>
+
+<div class="container">
+  <h1>Upload Configurations</h1>
+  <p class="subtitle">Upload Cisco, Huawei, or Juniper config files for automated parsing and validation.</p>
+
+  {% if message %}
+  <div class="alert alert-{{ message[0] }}">{{ message[1] }}</div>
+  {% endif %}
+
+  <div class="card">
+    <h2>Upload Device Configs</h2>
+    <form method="POST" enctype="multipart/form-data">
+      <div class="drop-zone" onclick="document.getElementById('file-input').click()">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+            d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+        </svg>
+        <p><strong>Click to browse</strong> or drag & drop config files</p>
+        <p>Supports .cfg, .conf, .txt — multiple files allowed</p>
+        <div id="file-list"></div>
+      </div>
+      <input type="file" id="file-input" name="configs" multiple accept=".cfg,.conf,.txt">
+
+      <div style="margin-top:1.5rem; display:flex; gap:1rem;">
+        <button type="submit" class="btn btn-primary">
+          <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+          </svg>
+          Parse & Validate
+        </button>
+        <a href="/dashboard" class="btn btn-secondary">View Dashboard →</a>
+      </div>
+    </form>
+  </div>
+
+  {% if devices %}
+  <div class="card">
+    <h2>Parsed Devices ({{ devices|length }})</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Hostname</th><th>Vendor</th><th>File</th><th>Uploaded</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for dev in devices %}
+        <tr>
+          <td><strong>{{ dev.hostname }}</strong></td>
+          <td>
+            <span class="badge badge-{{ dev.vendor|lower }}">{{ dev.vendor }}</span>
+          </td>
+          <td style="color:#94a3b8">{{ dev.filename }}</td>
+          <td style="color:#94a3b8">{{ dev.uploaded_at.strftime('%Y-%m-%d %H:%M') }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+</div>
+
+<script>
+  const input = document.getElementById('file-input');
+  const list  = document.getElementById('file-list');
+  input.addEventListener('change', () => {
+    list.innerHTML = [...input.files].map(f =>
+      `<span>📄 ${f.name}</span>`
+    ).join('');
+  });
+
+  const zone = document.querySelector('.drop-zone');
+  zone.addEventListener('dragover', e => { e.preventDefault(); zone.style.borderColor='#38bdf8'; });
+  zone.addEventListener('dragleave', () => { zone.style.borderColor=''; });
+  zone.addEventListener('drop', e => {
+    e.preventDefault(); zone.style.borderColor='';
+    const dt = new DataTransfer();
+    [...e.dataTransfer.files].forEach(f => dt.items.add(f));
+    input.files = dt.files;
+    list.innerHTML = [...input.files].map(f => `<span>📄 ${f.name}</span>`).join('');
+  });
+</script>
+</body>
+</html>

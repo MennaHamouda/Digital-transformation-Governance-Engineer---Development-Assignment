@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Network Audit — Dashboard</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: #0f172a; color: #e2e8f0; min-height: 100vh; }
+
+    nav {
+      background: #1e293b;
+      border-bottom: 1px solid #334155;
+      padding: 0 2rem;
+      display: flex;
+      align-items: center;
+      gap: 2rem;
+      height: 56px;
+    }
+    nav .brand { font-size: 1.1rem; font-weight: 700; color: #38bdf8; }
+    nav a { color: #94a3b8; text-decoration: none; font-size: .9rem; padding: 4px 0; border-bottom: 2px solid transparent; transition: .2s; }
+    nav a:hover, nav a.active { color: #e2e8f0; border-color: #38bdf8; }
+    nav .export-group { margin-left: auto; display: flex; gap: .6rem; }
+
+    .container { max-width: 1100px; margin: 2.5rem auto; padding: 0 1.5rem; }
+    h1 { font-size: 1.6rem; font-weight: 700; margin-bottom: .3rem; }
+    .subtitle { color: #94a3b8; font-size: .9rem; margin-bottom: 2rem; }
+
+    .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 2rem; }
+    .stat {
+      background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 1.2rem 1.5rem;
+    }
+    .stat .label { font-size: .8rem; color: #64748b; text-transform: uppercase; letter-spacing: .5px; margin-bottom: .4rem; }
+    .stat .value { font-size: 2rem; font-weight: 700; }
+    .stat.green .value { color: #4ade80; }
+    .stat.red   .value { color: #f87171; }
+    .stat.blue  .value { color: #38bdf8; }
+    .stat.yellow .value { color: #fbbf24; }
+
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 2rem; }
+
+    .card {
+      background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 1.5rem;
+    }
+    .card h2 { font-size: 1rem; font-weight: 600; color: #38bdf8; margin-bottom: 1.2rem; }
+
+    canvas { max-height: 280px; }
+
+    table { width: 100%; border-collapse: collapse; font-size: .85rem; }
+    th { text-align: left; padding: .6rem 1rem; background: #0f172a; color: #64748b; font-weight: 600; font-size: .75rem; text-transform: uppercase; letter-spacing: .5px; border-bottom: 1px solid #334155; }
+    td { padding: .6rem 1rem; border-bottom: 1px solid #1e293b55; vertical-align: top; }
+    tr:hover td { background: #0f172a55; }
+
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 99px; font-size: .75rem; font-weight: 600; }
+    .badge-pass  { background: #052e16; color: #86efac; }
+    .badge-fail  { background: #2d0a0a; color: #fca5a5; }
+    .badge-cisco   { background: #1c3a5e; color: #93c5fd; }
+    .badge-huawei  { background: #1c2a1c; color: #86efac; }
+    .badge-juniper { background: #2d1a00; color: #fcd34d; }
+
+    details { margin-top: .4rem; }
+    summary { cursor: pointer; color: #94a3b8; font-size: .8rem; }
+    summary:hover { color: #e2e8f0; }
+    .check-list { margin-top: .4rem; }
+    .check-item { display: flex; align-items: flex-start; gap: .5rem; padding: .3rem 0; font-size: .8rem; border-bottom: 1px solid #1e293b; }
+    .check-item:last-child { border-bottom: none; }
+    .check-status { flex-shrink: 0; margin-top: 1px; }
+
+    .btn {
+      display: inline-flex; align-items: center; gap: .4rem;
+      padding: .5rem 1rem; border-radius: 7px; font-size: .82rem; font-weight: 600;
+      cursor: pointer; border: none; transition: .2s; text-decoration: none;
+    }
+    .btn-outline { background: transparent; color: #94a3b8; border: 1px solid #334155; }
+    .btn-outline:hover { color: #e2e8f0; border-color: #94a3b8; }
+    .btn-green { background: #14532d; color: #86efac; border: 1px solid #166534; }
+    .btn-green:hover { background: #166534; }
+
+    .empty { text-align: center; padding: 3rem; color: #4b5563; }
+    .empty svg { width: 48px; height: 48px; margin: 0 auto 1rem; display: block; opacity: .4; }
+  </style>
+</head>
+<body>
+
+<nav>
+  <span class="brand">🛡 NetAudit</span>
+  <a href="/upload">Upload</a>
+  <a href="/dashboard" class="active">Dashboard</a>
+  <div class="export-group">
+    <a href="/export/csv" class="btn btn-outline">⬇ CSV</a>
+    <a href="/export/excel" class="btn btn-green">⬇ Excel</a>
+  </div>
+</nav>
+
+<div class="container">
+  <h1>Audit Dashboard</h1>
+  <p class="subtitle">Real-time analysis of {{ devices|length }} device(s) across your network</p>
+
+  {% if not devices %}
+  <div class="card empty">
+    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+        d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18"/>
+    </svg>
+    <p>No devices uploaded yet. <a href="/upload" style="color:#38bdf8">Upload configs →</a></p>
+  </div>
+
+  {% else %}
+
+  <!-- Stat cards -->
+  <div class="stats">
+    <div class="stat blue">
+      <div class="label">Total Devices</div>
+      <div class="value">{{ devices|length }}</div>
+    </div>
+    <div class="stat green">
+      <div class="label">Checks Passed</div>
+      <div class="value">{{ total_pass }}</div>
+    </div>
+    <div class="stat red">
+      <div class="label">Checks Failed</div>
+      <div class="value">{{ total_fail }}</div>
+    </div>
+    <div class="stat yellow">
+      <div class="label">Pass Rate</div>
+      <div class="value">
+        {% if total_pass + total_fail > 0 %}
+          {{ ((total_pass / (total_pass + total_fail)) * 100)|round|int }}%
+        {% else %}N/A{% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Charts -->
+  <div class="grid-2">
+    <div class="card">
+      <h2>Routing Protocol Distribution</h2>
+      <canvas id="pieChart"></canvas>
+    </div>
+    <div class="card">
+      <h2>Interfaces per Device</h2>
+      <canvas id="barChart"></canvas>
+    </div>
+  </div>
+
+  <!-- Validation summary -->
+  <div class="card" style="margin-bottom:2rem">
+    <h2>Validation Summary</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Hostname</th><th>Vendor</th><th>Passed</th><th>Failed</th><th>Details</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in val_summary %}
+        <tr>
+          <td><strong>{{ row.hostname }}</strong></td>
+          <td><span class="badge badge-{{ row.vendor|lower }}">{{ row.vendor }}</span></td>
+          <td><span class="badge badge-pass">✓ {{ row.passes }}</span></td>
+          <td>
+            {% if row.fails > 0 %}
+            <span class="badge badge-fail">✗ {{ row.fails }}</span>
+            {% else %}
+            <span style="color:#4b5563">—</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if row.checks %}
+            <details>
+              <summary>{{ row.checks|length }} check(s)</summary>
+              <div class="check-list">
+                {% for c in row.checks %}
+                <div class="check-item">
+                  <span class="check-status">
+                    {% if c.status == 'PASS' %}✅{% else %}❌{% endif %}
+                  </span>
+                  <div>
+                    <strong>{{ c.check }}</strong><br>
+                    <span style="color:#94a3b8">{{ c.message }}</span>
+                  </div>
+                </div>
+                {% endfor %}
+              </div>
+            </details>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Device interface details -->
+  <div class="card">
+    <h2>Interface Details</h2>
+    <table>
+      <thead>
+        <tr><th>Device</th><th>Interface</th><th>IP Address</th><th>Subnet Mask</th><th>Description</th></tr>
+      </thead>
+      <tbody>
+        {% for dev in devices %}
+          {% for iface in dev.interfaces %}
+          <tr>
+            <td>{{ dev.hostname }}</td>
+            <td><code style="color:#7dd3fc">{{ iface.name }}</code></td>
+            <td>{{ iface.ip or '—' }}</td>
+            <td style="color:#94a3b8">{{ iface.mask or '—' }}</td>
+            <td style="color:#94a3b8">{{ iface.description or '—' }}</td>
+          </tr>
+          {% endfor %}
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% endif %}
+</div>
+
+<script>
+  const ospf = {{ ospf_count }};
+  const bgp  = {{ bgp_count }};
+  const ifaceData = {{ iface_data | tojson }};
+
+  // Pie chart
+  new Chart(document.getElementById('pieChart'), {
+    type: 'doughnut',
+    data: {
+      labels: ['OSPF', 'BGP'],
+      datasets: [{
+        data: [ospf, bgp],
+        backgroundColor: ['#0ea5e9', '#f59e0b'],
+        borderColor: '#1e293b',
+        borderWidth: 3,
+        hoverOffset: 6
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { labels: { color: '#94a3b8', font: { size: 13 } } },
+        tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${ctx.parsed} routers` } }
+      }
+    }
+  });
+
+  // Bar chart
+  new Chart(document.getElementById('barChart'), {
+    type: 'bar',
+    data: {
+      labels: ifaceData.map(d => d.hostname),
+      datasets: [{
+        label: 'Interfaces',
+        data: ifaceData.map(d => d.count),
+        backgroundColor: '#0ea5e9aa',
+        borderColor: '#38bdf8',
+        borderWidth: 1,
+        borderRadius: 6,
+      }]
+    },
+    options: {
+      responsive: true,
+      scales: {
+        x: { ticks: { color: '#94a3b8' }, grid: { color: '#1e293b' } },
+        y: { ticks: { color: '#94a3b8', stepSize: 1 }, grid: { color: '#334155' }, beginAtZero: true }
+      },
+      plugins: { legend: { display: false } }
+    }
+  });
+</script>
+</body>
+</html>
