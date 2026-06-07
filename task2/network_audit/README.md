@@ -48,3 +48,15 @@ The `uploads/` folder contains the 5 sample configs:
 
 ![Project overview](images/1.png)
 
+![Project overview](images/2.png)
+
+![Project overview](images/3.png)
+
+![Project overview](images/4.png)
+
+![Project overview](images/5.png)
+
+
+
+
+
