@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Prompt Studio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0e0e10;
+      --surface: #18181b;
+      --border: #2a2a30;
+      --accent: #f0c96b;
+      --accent-dim: rgba(240,201,107,0.12);
+      --text: #e8e8ec;
+      --muted: #7a7a8a;
+      --error: #f87171;
+      --radius: 10px;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 3rem 1.5rem 5rem;
+    }
+
+    /* Ambient glow */
+    body::before {
+      content: '';
+      position: fixed;
+      top: -200px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 600px;
+      height: 400px;
+      background: radial-gradient(ellipse, rgba(240,201,107,0.07) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 3rem;
+      animation: fadeDown 0.6s ease both;
+    }
+
+    header h1 {
+      font-family: 'DM Serif Display', serif;
+      font-size: clamp(2rem, 5vw, 3.2rem);
+      color: var(--accent);
+      letter-spacing: -0.5px;
+      line-height: 1.1;
+    }
+
+    header p {
+      margin-top: 0.6rem;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    .card {
+      width: 100%;
+      max-width: 720px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 2rem;
+      animation: fadeUp 0.6s 0.1s ease both;
+    }
+
+    label {
+      display: block;
+      font-size: 0.8rem;
+      font-weight: 500;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 0.6rem;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 160px;
+      resize: vertical;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.95rem;
+      line-height: 1.6;
+      padding: 1rem 1.2rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    textarea:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-dim);
+    }
+
+    textarea::placeholder { color: var(--muted); }
+
+    .actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.75rem;
+      margin-top: 1rem;
+    }
+
+    button {
+      cursor: pointer;
+      border: none;
+      border-radius: var(--radius);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.9rem;
+      font-weight: 500;
+      padding: 0.65rem 1.4rem;
+      transition: opacity 0.15s, transform 0.15s;
+    }
+
+    button:active { transform: scale(0.97); }
+
+    #clearBtn {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--muted);
+    }
+
+    #clearBtn:hover { border-color: var(--text); color: var(--text); }
+
+    #submitBtn {
+      background: var(--accent);
+      color: #0e0e10;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    #submitBtn:hover { opacity: 0.88; }
+    #submitBtn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+    /* Spinner */
+    .spinner {
+      width: 14px; height: 14px;
+      border: 2px solid rgba(0,0,0,0.25);
+      border-top-color: #0e0e10;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      display: none;
+    }
+
+    #submitBtn.loading .spinner { display: block; }
+    #submitBtn.loading .btn-label { opacity: 0.7; }
+
+    /* Response area */
+    #responseSection {
+      margin-top: 2rem;
+      display: none;
+      animation: fadeUp 0.4s ease both;
+    }
+
+    #responseSection.visible { display: block; }
+
+    .response-header {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 0.8rem;
+    }
+
+    .response-header span {
+      font-size: 0.8rem;
+      font-weight: 500;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .response-header .dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: #4ade80;
+    }
+
+    #responseBox {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.2rem 1.4rem;
+      font-family: 'DM Mono', monospace;
+      font-size: 0.88rem;
+      line-height: 1.75;
+      color: var(--text);
+      white-space: pre-wrap;
+      word-break: break-word;
+      max-height: 480px;
+      overflow-y: auto;
+    }
+
+    #responseBox.error { color: var(--error); border-color: rgba(248,113,113,0.3); }
+
+    #errorMsg {
+      display: none;
+      margin-top: 0.75rem;
+      color: var(--error);
+      font-size: 0.85rem;
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(14px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes fadeDown {
+      from { opacity: 0; transform: translateY(-10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>AI Prompt Studio</h1>
+    <p>Type a prompt and get an AI-generated response instantly.</p>
+  </header>
+
+  <div class="card">
+    <label for="promptInput">Your Prompt</label>
+    <textarea
+      id="promptInput"
+      placeholder="Ask me anything… summarise text, brainstorm ideas, explain a concept."
+      spellcheck="true"
+    ></textarea>
+
+    <p id="errorMsg"></p>
+
+    <div class="actions">
+      <button id="clearBtn" type="button">Clear</button>
+      <button id="submitBtn" type="button">
+        <div class="spinner"></div>
+        <span class="btn-label">Generate</span>
+      </button>
+    </div>
+
+    <section id="responseSection" aria-live="polite">
+      <div class="response-header">
+        <div class="dot"></div>
+        <span>Response</span>
+      </div>
+      <div id="responseBox"></div>
+    </section>
+  </div>
+
+  <script>
+    const promptInput  = document.getElementById('promptInput');
+    const submitBtn    = document.getElementById('submitBtn');
+    const clearBtn     = document.getElementById('clearBtn');
+    const responseSection = document.getElementById('responseSection');
+    const responseBox  = document.getElementById('responseBox');
+    const errorMsg     = document.getElementById('errorMsg');
+
+    function setLoading(on) {
+      submitBtn.disabled = on;
+      submitBtn.classList.toggle('loading', on);
+    }
+
+    function showError(msg) {
+      errorMsg.textContent = msg;
+      errorMsg.style.display = 'block';
+    }
+
+    function clearError() {
+      errorMsg.textContent = '';
+      errorMsg.style.display = 'none';
+    }
+
+    clearBtn.addEventListener('click', () => {
+      promptInput.value = '';
+      responseSection.classList.remove('visible');
+      responseBox.textContent = '';
+      responseBox.classList.remove('error');
+      clearError();
+      promptInput.focus();
+    });
+
+    submitBtn.addEventListener('click', async () => {
+      clearError();
+      const prompt = promptInput.value.trim();
+
+      if (!prompt) {
+        showError('Please enter a prompt before submitting.');
+        promptInput.focus();
+        return;
+      }
+
+      setLoading(true);
+      responseSection.classList.remove('visible');
+      responseBox.classList.remove('error');
+
+      try {
+        const res = await fetch('/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt }),
+        });
+
+        const data = await res.json();
+
+        if (!res.ok || data.error) {
+          responseBox.textContent = data.error || 'An unexpected error occurred.';
+          responseBox.classList.add('error');
+        } else {
+          responseBox.textContent = data.response;
+          responseBox.classList.remove('error');
+        }
+
+        responseSection.classList.add('visible');
+
+      } catch (err) {
+        showError('Network error — could not reach the server.');
+      } finally {
+        setLoading(false);
+      }
+    });
+
+    // Allow Ctrl/Cmd + Enter to submit
+    promptInput.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') submitBtn.click();
+    });
+  </script>
+
+</body>
+</html>
