@@ -44,4 +44,7 @@ The `uploads/` folder contains the 5 sample configs:
 - R2_Huawei.cfg — Huawei, OSPF
 - R3_Juniper.conf — Juniper, BGP
 - R4_Cisco.cfg — Cisco, BGP
-- R5_Huawei.cfg — Huawei, BGP
+- R5_Huawei.cfg — Huawei
+
+![Project overview](images/1.jpeg.jpng)
+
